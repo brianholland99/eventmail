@@ -1,0 +1,23 @@
+[package]
+name = "eventmail"
+version = "0.1.0"
+edition = "2021"
+publish = false
+authors = ["Brian Holland <nosed-plosive.0n@icloud.com>"]
+description = "Mail out event notifications to participants."
+repository = "https://github.com/brianholland99/eventmail"
+license = "MIT"
+keywords = ["email"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lettre = "0.11.7"
+serde = { version = "1.0", features = ["derive"] }
+dirs = "5.0.0"
+text_placeholder = "0.5.0"
+toml = "0.8.14"
+clap = { version = "4.3.11", features = ["derive"] }
+indexmap = { version = "2.0.0", features = ["serde"] }
+regex = "1.9.3"
+chrono = "0.4.31"
