@@ -2,10 +2,8 @@
 
 This program was written to send emails for events.  This is an
 enhancement to the Python "lunchemail" program that sends out lunch
-announcement using data from a text file. This enhanced version is written in
-Rust as a learning exercise. This newer version is a bridge between
-the Friday lunch-specific email and a more general email announcement, hence
-the name change.
+announcement using data from a text file. This now handles more than
+just the next Friday that was used for the weekly lunch emails.
 
 ## Features
 
@@ -20,10 +18,11 @@ the name change.
 - User-defined regex to extract information from the data file.
   The file is still processed one line at a time, so only a regex
   for a single line works.
-- Body of message can insert text captured by the regex into the text
-  defined in the configuration file.
+- Body and subject of message can have substitutions of date and
+  any fields captured from optional event_file.
 - Allows user to specify email addresses, the subject, and connection
   information for sending the email.
+- Profiles can specify any weekday for the next date.
 
 ## Usage
 
@@ -65,12 +64,13 @@ Warning: The program currently ignores all keys that are not expected.
 Later versions may add new keys. To be safe, don't use keys that are not
 defined.
 
-***There are no keys that are required to be in all profiles. However, most
-current keys are required to be used for sending of messages. Any callable
-profile must have those required fields after inheritance is applied.
+***There are no keys that are required to be in all profiles. However, many
+current keys are required to be used for sending of messages. All callable
+profiles must have those required fields after inheritance is applied.
 
 The keys "port" and "inherit" are totally optional even after all inheritance
-is applied. 
+is applied. The "event_file" and "format" fields are optional if only the
+date is needed for substitution into the body and subject.
 
 #### Key - doc
 
@@ -88,22 +88,20 @@ doc = "Send Friday lunch announcements."
 
 #### Key - date_spec
 
-The 'date_spec' MUST currently have the value of "Friday" so that this will be
-backwards compatible with the planned next version that will accept any
-day of the week. The meaning of Friday is the date of the upcoming Friday
-(including today).
+The 'date_spec' currently only supports a weekday. Both fully spelled-out
+weekdays (E.g., "Monday") and three letter abbreviations (E.g., "Mon") are
+accepted. The weekday specified means the date of the upcoming weekday
+including today.
 
 ```TOML
 # Example
-date_spec = "Friday" # Required to be 'Friday' after inheritance.
+date_spec = "Friday"
 ```
 
 #### Key - event_file
 
-The 'event_file' is currently required since the program is still hardcoded to
-use this. It should be defined to be the path of the event_file. Do not use any
-command-line shortcuts such as "${HOME"}" or "~" for this. This is the file
-that will be read to find out information for the specific date.
+The 'event_file' is only required if data other than the date is to be
+substituted in the subject or body.
 
 ```TOML
 # Example
@@ -112,11 +110,11 @@ event_file = "/home/my_user/my_event_file.txt"
 
 #### Key - format
 
-The 'format' is currently required since the program needs this to parse
-the event_file that is still required. This is a regex that
-is used to parse each line to find the one matching "date" of the event. The
-format needs to include "date" as a capture that will be checked against the
-date of the next Friday.
+The 'format' is ignored unless the 'event_file' is set and in that case it
+is required. This 'format' describes the format of the lines in a regex
+pattern with fields to capture that will be used for substitutions in the
+subject or body. The format needs to include "date" as a capture that will be
+checked against the date indicated by the 'date_spec' field.
 
 ```TOML
 # Example format capturing "date" and "location"
@@ -255,15 +253,8 @@ from = "My User <my_user@gmail.com>"
 
 ## Some Current Limitations
 
-- The event file is expected to have lines with a yyyy-mm-dd date that
-   can be captured by the 'format' regex.
-- The program only looks for the date of the next Friday in that file.
+- The date_spec can only specify a weekday to mean next date for that weekday.
 
-## Future enhancements
-
-- Allow any day of week.
-- Allow no event_file/format and build message with just date.
-
-## More thoughts
+## Thoughts
 - Determine if date_spec makes sense to expand beyond just the next date
-  matching the given weekday.
+  matching the weekday.

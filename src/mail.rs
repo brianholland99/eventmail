@@ -5,7 +5,7 @@ use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use std::process::exit;
 
-pub fn send_mail(settings: Profile, args: Args, body: String) {
+pub fn send_mail(settings: Profile, args: Args, body: String, subject: String) {
     // FROM
     let Some(from_string) = settings.from else {
         eprintln!("From must be set");
@@ -34,16 +34,6 @@ pub fn send_mail(settings: Profile, args: Args, body: String) {
         mailboxes = mailboxes.with(mailbox);
     }
     let to_header: header::To = mailboxes.clone().into();
-
-    // SUBJECT
-    let Some(subject) = settings.subject else {
-        eprintln!("Subject must be set.");
-        exit(1);
-    };
-    if subject.is_empty() {
-        eprintln!("Subject must not be an empty string.");
-        exit(1);
-    }
 
     if args.dry_run {
         println!("From: {from_string}");

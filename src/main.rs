@@ -7,10 +7,10 @@ mod mail;
 mod prepmail;
 use crate::config::get_settings;
 use crate::mail::send_mail;
-use crate::prepmail::prepare_body;
+use crate::prepmail::prepare_text;
 
 fn main() {
     let (settings, args) = get_settings();
-    let (settings, body) = prepare_body(settings);
-    send_mail(settings, args, body);
+    let (settings, body, subject) = prepare_text(settings);
+    send_mail(settings, args, body, subject);
 }

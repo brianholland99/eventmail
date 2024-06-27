@@ -13,7 +13,7 @@ use text_placeholder::Template;
 /// named values in a HashMap.
 ///
 /// Note: Hardwired to 'date' and only direct match of that one capture.
-fn match_data(filename: String, pattern: String, expected: &String) -> HashMap<String, String> {
+fn capture(filename: String, pattern: String, expected: &String) -> HashMap<String, String> {
     let re = Regex::new(pattern.as_str()).unwrap_or_else(|err| {
         eprintln!("Format - {err}");
         exit(1);
@@ -51,15 +51,15 @@ fn match_data(filename: String, pattern: String, expected: &String) -> HashMap<S
 /// Return the date of the next Friday in the form of yyyy-mm-dd.
 ///
 /// Note: This is one of the current hardwired limitations.
-fn get_next_friday() -> String {
+fn get_next_date(day: Weekday) -> String {
     let now = chrono::Local::now();
-    // Calculation is unsigned so added 7 to index of 4 to prevent overflow error.
-    let days_ahead = (11 - now.weekday().num_days_from_monday()) % 7;
-    let fri = now + Duration::days(i64::from(days_ahead));
-    fri.date_naive().to_string()
+    // Calculation is unsigned so added 7 to prevent overflow error.
+    let days_ahead = (day.num_days_from_monday() + 7 - now.weekday().num_days_from_monday()) % 7;
+    let date = now + Duration::days(i64::from(days_ahead));
+    date.date_naive().to_string()
 }
 
-pub fn apply_template(body: String, data: &mut HashMap<String, String>) -> String {
+pub fn apply_template(body: String, data: &HashMap<String, String>) -> String {
     let template = Template::new(body.as_str());
     let default = "".to_string();
     // TODO: Checking source for fill_with_function, it can return an error if key is
@@ -76,32 +76,45 @@ pub fn apply_template(body: String, data: &mut HashMap<String, String>) -> Strin
     new_body
 }
 
-pub fn prepare_body(mut settings: Profile) -> (Profile, String) {
+/// Takes body and settings from Profile and applies template substitutions.
+pub fn prepare_text(mut settings: Profile) -> (Profile, String, String) {
     let Some(mut body) = settings.body.take() else {
         eprintln!("No body template for message.");
         exit(1)
     };
-    let Some(file) = settings.event_file.clone() else {
-        eprintln!("No event_file defined in profile");
-        exit(1)
+    let Some(mut subject) = settings.subject.take() else {
+        eprintln!("No subject template for message.");
+        exit(1);
     };
-    let Some(pattern) = settings.format.take() else {
-        eprintln!("No format given for file.");
-        exit(1)
-    };
-    // Next two checks concerning date_spec are to maintain
-    // config file compatibility when different days of week are allowed.
-    // TODO: Delete these for next version
     let Some(date_spec) = settings.date_spec.take() else {
         eprintln!("No date_spec defined in profile.");
         exit(1)
     };
-    if date_spec != "Friday" {
-        eprintln!("Only date_spec of 'Friday' is currently supported.");
+    let day = date_spec.parse::<Weekday>().unwrap_or_else(|err| {
+        eprintln!("'date_spec not a weekday (E.g. 'Monday' or 'Mon')");
+        eprintln!("date_spec = {date_spec}, Err = {err}");
         exit(1);
-    }
-    let expected = get_next_friday();
-    let mut ans = match_data(file, pattern, &expected);
-    body = apply_template(body, &mut ans);
-    (settings, body)
+    });
+    let date = get_next_date(day);
+    let mut dict: HashMap<String, String>;
+    match settings.event_file.take() {
+        // Capture fields from event_file.
+        Some(f) => {
+            let pattern = settings.format.take().unwrap_or_else(|| {
+                eprintln!("Event file set, but no format defined");
+                exit(1);
+            });
+            dict = capture(f, pattern, &date)
+        }
+        // Just set date.
+        None => {
+            dict = HashMap::new();
+            dict.insert("date".to_string(), date);
+            ()
+        }
+    };
+
+    body = apply_template(body, &dict);
+    subject = apply_template(subject, &dict);
+    (settings, body, subject)
 }
